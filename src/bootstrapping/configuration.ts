@@ -1,5 +1,5 @@
 // NestJS imports
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { ClassSerializerInterceptor, INestApplication, ValidationPipe } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 
 // Third-party imports
@@ -25,6 +25,7 @@ export function configureMicroservice(
   app.useGlobalGuards(new JwtAuthGuard(reflector));
   app.useGlobalFilters(new CustomExceptionFilter());
   app.useGlobalInterceptors(new TransformInterceptor());
+  app.useGlobalInterceptors(new ClassSerializerInterceptor(reflector));
   app.setGlobalPrefix(configuration.basePath);
   app.useGlobalPipes(
     new ValidationPipe({

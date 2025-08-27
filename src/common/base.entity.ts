@@ -8,5 +8,5 @@ export abstract class BaseEntity {
     type: 'boolean',
     name: 'is_deleted',
   })
-  public isDeleted: string;
+  public isDeleted: boolean;
 }

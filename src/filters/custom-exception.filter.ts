@@ -14,6 +14,7 @@ import { Request, Response } from 'express';
 
 // Custom file imports
 import { BusinessError } from '../common';
+import { QueryFailedError } from 'typeorm';
 
 export interface ErrorDetail {
   type: string;
@@ -158,12 +159,39 @@ class BusinessErrorHandler extends GenericErrorHandler<BusinessError> {
   }
 }
 
+class DatabaseErrorHandler extends GenericErrorHandler<QueryFailedError> {
+  httpStatus: number = HttpStatus.BAD_REQUEST;
+  errorType: string = translateCodeError(
+    this.exception.driverError['code'] as string,
+  );
+  errorMessage: string | Record<string, any>;
+
+  override logError() {
+    this._logger.error(
+      `${JSON.stringify(this.getErrorDetail())}`,
+      this.exception.driverError['code'],
+      `${this.request.method} ${this.request.url}`,
+    );
+  }
+}
+
 class ErrorHandlerFactory {
   public static create(_logger: Logger, exception: Error, request, response) {
     if (exception instanceof HttpException)
       return new HttpErrorHandler(_logger, exception, request, response);
     else if (exception instanceof BusinessError)
       return new BusinessErrorHandler(_logger, exception, request, response);
+    else if (exception instanceof QueryFailedError)
+      return new DatabaseErrorHandler(_logger, exception, request, response);
     else return new UnknownErrorHandler(_logger, exception, request, response);
   }
 }
+
+const translateCodeError = (code: string): string => {
+  switch (code) {
+    case '23503':
+      return 'DB.EntityHasActiveRelations';
+    default:
+      return '';
+  }
+};
