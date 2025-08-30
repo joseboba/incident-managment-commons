@@ -43,6 +43,16 @@ export function configureMicroservice(
     .setTitle(configuration.title)
     .setDescription(configuration.description)
     .setVersion(configuration.version)
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        in: 'header',
+      },
+      'access-token',
+    )
+    .addSecurityRequirements('access-token')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

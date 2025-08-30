@@ -1,5 +1,10 @@
 // NestJS imports
-import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AuthGuard } from '@nestjs/passport';
 
@@ -7,7 +12,8 @@ import { AuthGuard } from '@nestjs/passport';
 import { Observable } from 'rxjs';
 
 // Custom file imports
-import { IS_PUBLIC_KEY } from '../decorators';
+import { IS_PUBLIC_KEY, JWT_OPTIONS_KEY } from '../decorators';
+import { BaseJwtPayload } from '../common';
 
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') implements CanActivate {
@@ -22,6 +28,34 @@ export class JwtAuthGuard extends AuthGuard('jwt') implements CanActivate {
       context.getHandler(),
       context.getClass(),
     ]);
-    return isPublic ? true : super.canActivate(context);
+
+    if (isPublic) return true;
+    return super.canActivate(context);
+  }
+
+  handleRequest<TUser = any>(
+    err: any,
+    user: TUser,
+    info: any,
+    context: ExecutionContext,
+  ): TUser {
+    if (err || !user) throw err || new UnauthorizedException();
+
+    const required = this._reflector.getAllAndOverride<string[]>(
+      JWT_OPTIONS_KEY,
+      [context.getHandler(), context.getClass()],
+    );
+
+    if (!required || required.length === 0) return user;
+
+    const payload = user as unknown as BaseJwtPayload;
+    const have = new Set(payload.authorities ?? []);
+    const ok = required.every((opt) => have.has(opt));
+
+    if (!ok) {
+      throw new UnauthorizedException('Insufficient permissions');
+    }
+
+    return user;
   }
 }
